@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AERIS-10 Docs | Bring-Up</title>
+  <link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="container nav">
+      <a class="brand" href="index.html">AERIS-10 Docs</a>
+      <nav>
+        <a href="architecture.html">Architecture</a>
+        <a href="implementation-log.html">Implementation Log</a>
+        <a href="bring-up.html">Bring-Up</a>
+        <a href="reports.html">Reports</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container page">
+    <section class="hero">
+      <p class="eyebrow">Execution Checklist</p>
+      <h1>Hardware Bring-Up Plan</h1>
+      <p>Operational sequence and pass/fail gates for Day-1 and post-Day-1 validation.</p>
+    </section>
+
+    <section class="card" style="margin-top:0.8rem;">
+      <h2>Bring-up gates</h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Step</th>
+              <th>Objective</th>
+              <th>Pass Criteria</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>1</td><td>Program baseline bitstream</td><td>JTAG detect + successful configuration</td></tr>
+            <tr><td>2</td><td>Clock/reset sanity</td><td>Stable clocks and deterministic reset release</td></tr>
+            <tr><td>3</td><td>ADC front-end</td><td>Valid raw data visible in ILA on expected clock</td></tr>
+            <tr><td>4</td><td>DDC verification</td><td>Expected valid strobe and non-zero I/Q outputs</td></tr>
+            <tr><td>5</td><td>Matched filter stage</td><td>Range profile valid asserted and segment flow correct</td></tr>
+            <tr><td>6</td><td>Range/Doppler pipeline</td><td>Deterministic frame outputs with full bin coverage</td></tr>
+            <tr><td>7</td><td>USB host link</td><td>Sustained transfer and stable framing over soak window</td></tr>
+            <tr><td>8</td><td>Thermal/power screen</td><td>No rail anomalies or thermal runaway under load</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="grid-2" style="margin-top:0.8rem;">
+      <article class="card">
+        <h2>Day-1 quick sequence</h2>
+        <ol>
+          <li>Mount SoM on carrier and verify supply/jumper defaults.</li>
+          <li>Program minimal heartbeat top for immediate hardware liveness check.</li>
+          <li>Program debug bitstream and attach LTX for ILA sessions.</li>
+          <li>Capture first ADC and DDC traces, compare with expected signatures.</li>
+        </ol>
+      </article>
+      <article class="card">
+        <h2>Risk controls</h2>
+        <ul>
+          <li>Keep production target untouched; use split dev targets for carrier-specific pinouts.</li>
+          <li>Do not rely on RTL hierarchical net names in post-synth debug scripts.</li>
+          <li>Run timing/CDC/exceptions checks after every target migration update.</li>
+          <li>Use a repeatable program-capture checklist to detect intermittent reset/clock issues.</li>
+        </ul>
+      </article>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="container"><p>This checklist is the operational source of truth for hardware execution.</p></div>
+  </footer>
+</body>
+</html>

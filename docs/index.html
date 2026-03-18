@@ -3,119 +3,83 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>AERIS-10 Simulation Reports</title>
-  <style>
-    :root {
-      --bg: #0f172a;
-      --panel: #111827;
-      --card: #1f2937;
-      --text: #e5e7eb;
-      --muted: #9ca3af;
-      --accent: #22d3ee;
-      --accent-2: #38bdf8;
-    }
-    * { box-sizing: border-box; }
-    body {
-      margin: 0;
-      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-      color: var(--text);
-      background: radial-gradient(1200px 800px at 20% -10%, #1e293b 0%, var(--bg) 55%);
-      line-height: 1.45;
-    }
-    .wrap {
-      max-width: 920px;
-      margin: 0 auto;
-      padding: 32px 20px 64px;
-    }
-    .hero {
-      background: linear-gradient(135deg, #0b1220 0%, #111827 55%, #0b1220 100%);
-      border: 1px solid #263244;
-      border-radius: 14px;
-      padding: 22px;
-      margin-bottom: 22px;
-    }
-    h1 {
-      margin: 0 0 8px;
-      font-size: 1.8rem;
-    }
-    .sub {
-      margin: 0;
-      color: var(--muted);
-    }
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-      gap: 14px;
-    }
-    .card {
-      background: var(--card);
-      border: 1px solid #334155;
-      border-radius: 12px;
-      padding: 16px;
-    }
-    .card h2 {
-      margin: 0 0 10px;
-      font-size: 1.1rem;
-    }
-    .meta {
-      margin: 0 0 14px;
-      color: var(--muted);
-      font-size: 0.95rem;
-    }
-    .btns {
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-    }
-    .btn {
-      display: inline-block;
-      text-decoration: none;
-      color: #06131a;
-      background: linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 100%);
-      font-weight: 600;
-      border-radius: 8px;
-      padding: 9px 12px;
-    }
-    .btn.alt {
-      color: var(--text);
-      background: #0b1220;
-      border: 1px solid #334155;
-    }
-    .foot {
-      margin-top: 18px;
-      color: var(--muted);
-      font-size: 0.9rem;
-    }
-  </style>
+  <title>AERIS-10 Engineering Docs</title>
+  <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
-  <main class="wrap">
+  <header class="topbar">
+    <div class="container nav">
+      <a class="brand" href="index.html">AERIS-10 Docs</a>
+      <nav>
+        <a href="architecture.html">Architecture</a>
+        <a href="implementation-log.html">Implementation Log</a>
+        <a href="bring-up.html">Bring-Up</a>
+        <a href="reports.html">Reports</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container page">
     <section class="hero">
-      <h1>AERIS-10 Public Simulation Reports</h1>
-      <p class="sub">GitHub Pages landing for antenna and Python simulation report artifacts.</p>
+      <p class="eyebrow">Open-Source Phased Array Radar</p>
+      <h1>Engineering Documentation Site</h1>
+      <p>This site tracks architecture, FPGA improvements, timing closure outcomes, and hardware bring-up readiness for AERIS-10.</p>
+      <div class="cta-row">
+        <a class="button" href="implementation-log.html">View Change Timeline</a>
+        <a class="button ghost" href="bring-up.html">Open Bring-Up Checklist</a>
+      </div>
     </section>
 
-    <section class="grid">
-      <article class="card">
-        <h2>Antenna Simulation Report</h2>
-        <p class="meta">Document: <code>AERIS_Antenna_Report.pdf</code></p>
-        <div class="btns">
-          <a class="btn" href="AERIS_Antenna_Report.pdf" target="_blank" rel="noopener">Open PDF</a>
-          <a class="btn alt" href="AERIS_Antenna_Report.pdf" download>Download</a>
-        </div>
+    <section class="stats-grid">
+      <article class="card stat">
+        <h2>Build 13 Timing</h2>
+        <p class="metric">WNS +0.311 ns</p>
+        <p class="muted">TNS 0.000, WHS +0.060, THS 0.000</p>
       </article>
-
-      <article class="card">
-        <h2>Python Simulation Report</h2>
-        <p class="meta">Document: <code>AERIS_Simulation_Report.pdf</code></p>
-        <div class="btns">
-          <a class="btn" href="AERIS_Simulation_Report.pdf" target="_blank" rel="noopener">Open PDF</a>
-          <a class="btn alt" href="AERIS_Simulation_Report.pdf" download>Download</a>
-        </div>
+      <article class="card stat">
+        <h2>Regression Status</h2>
+        <p class="metric">13 / 13 Suites</p>
+        <p class="muted">Integration golden match: 2048 / 2048</p>
+      </article>
+      <article class="card stat">
+        <h2>Debug Instrumentation</h2>
+        <p class="metric">4 ILA Cores</p>
+        <p class="muted">92 probe bits, 4096 depth</p>
+      </article>
+      <article class="card stat">
+        <h2>Current Phase</h2>
+        <p class="metric">Hardware Bring-Up</p>
+        <p class="muted">TE0712/TE0713 split targets prepared</p>
       </article>
     </section>
 
-    <p class="foot">Tip: In GitHub, enable Pages on the <code>main</code> branch with source folder <code>/docs</code>.</p>
+    <section class="grid-2">
+      <article class="card">
+        <h2>What changed recently</h2>
+        <ul>
+          <li>Closed timing on XC7A200T target and froze Build 13 candidate.</li>
+          <li>Added CDC waivers for 5 verified false positives.</li>
+          <li>Created resilient ILA insertion flow with post-synthesis net discovery.</li>
+          <li>Generated baseline and debug bitstreams for bring-up.</li>
+          <li>Added TE0712/TE0701 and TE0713/TE0701 split build targets.</li>
+        </ul>
+      </article>
+      <article class="card">
+        <h2>Documentation Map</h2>
+        <ul>
+          <li><a href="architecture.html">System and FPGA Architecture</a></li>
+          <li><a href="implementation-log.html">Detailed Engineering Change Log</a></li>
+          <li><a href="bring-up.html">Hardware Bring-Up Plan and Exit Criteria</a></li>
+          <li><a href="reports.html">Antenna/Python reports and generated artifacts</a></li>
+        </ul>
+      </article>
+    </section>
   </main>
+
+  <footer class="footer">
+    <div class="container">
+      <p>AERIS-10 documentation published via GitHub Pages from <code>/docs</code>.</p>
+    </div>
+  </footer>
 </body>
 </html>

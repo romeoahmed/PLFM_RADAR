@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AERIS-10 Docs | Implementation Log</title>
+  <link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="container nav">
+      <a class="brand" href="index.html">AERIS-10 Docs</a>
+      <nav>
+        <a href="architecture.html">Architecture</a>
+        <a href="implementation-log.html">Implementation Log</a>
+        <a href="bring-up.html">Bring-Up</a>
+        <a href="reports.html">Reports</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container page">
+    <section class="hero">
+      <p class="eyebrow">Engineering Journal</p>
+      <h1>Implementation Timeline and Improvements</h1>
+      <p>Consolidated record of key firmware, timing, debug and infrastructure changes.</p>
+    </section>
+
+    <section class="card" style="margin-top:0.8rem;">
+      <h2>Recent milestone timeline</h2>
+      <div class="timeline">
+        <article>
+          <h3>Build 13 frozen as hardware candidate</h3>
+          <p class="muted">WNS +0.311 ns, TNS 0.000, WHS +0.060, THS 0.000 on production target.</p>
+        </article>
+        <article>
+          <h3>CDC analysis completed with waivers</h3>
+          <p class="muted">5 critical warnings verified as false positives and documented as waivers.</p>
+        </article>
+        <article>
+          <h3>ILA insertion flow hardened</h3>
+          <p class="muted">Added net discovery pass, deferred core creation, and Vivado 2025.2 MU_CNT handling.</p>
+        </article>
+        <article>
+          <h3>Bring-up scripts and bitstreams generated</h3>
+          <p class="muted">Baseline + debug bitstreams, programming script, and ILA capture script prepared.</p>
+        </article>
+        <article>
+          <h3>Target split for Trenz development path</h3>
+          <p class="muted">Added TE0712 and TE0713 separate top wrappers/XDC/build scripts to isolate pinout differences.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="grid-2" style="margin-top:0.8rem;">
+      <article class="card">
+        <h2>Codebase quality and verification upgrades</h2>
+        <ul>
+          <li>Expanded simulation and co-simulation coverage with golden comparison workflows.</li>
+          <li>Formal verification executed across critical modules with passing results.</li>
+          <li>Improved reset strategy in key blocks to reduce async-reset related methodology warnings.</li>
+          <li>Renamed latency buffer module for maintainability and consistent references.</li>
+        </ul>
+      </article>
+      <article class="card">
+        <h2>Debug and infrastructure improvements</h2>
+        <ul>
+          <li>Post-synthesis net-name mapping documented to avoid brittle ILA net paths.</li>
+          <li>Generated both no-ILA and ILA debug bitstreams for staged bring-up.</li>
+          <li>Added dedicated scripts for TE0712/TE0713 split builds.</li>
+          <li>Created community issue to crowdsource compatible hardware test execution.</li>
+        </ul>
+      </article>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="container"><p>Update this page at each major commit or bring-up gate.</p></div>
+  </footer>
+</body>
+</html>

@@ -48,11 +48,16 @@ TESTS_MOCK_ONLY := test_bug2_ad9523_double_setup \
                    test_bug6_timer_variable_collision \
                    test_bug7_gpio_pin_conflict \
                    test_bug8_uart_commented_out \
-                   test_bug14_diag_section_args
+                   test_bug14_diag_section_args \
+                   test_gap3_emergency_stop_rails
 
 # Tests that are standalone (no mocks needed, pure logic)
 TESTS_STANDALONE := test_bug12_pa_cal_loop_inverted \
-                    test_bug13_dac2_adc_buffer_mismatch
+                    test_bug13_dac2_adc_buffer_mismatch \
+                    test_gap3_iwdg_config \
+                    test_gap3_temperature_max \
+                    test_gap3_idq_periodic_reread \
+                    test_gap3_emergency_state_ordering
 
 # Tests that need platform_noos_stm32.o + mocks
 TESTS_WITH_PLATFORM := test_bug11_platform_spi_transmit_only
@@ -60,7 +65,8 @@ TESTS_WITH_PLATFORM := test_bug11_platform_spi_transmit_only
 ALL_TESTS := $(TESTS_WITH_REAL) $(TESTS_MOCK_ONLY) $(TESTS_STANDALONE) $(TESTS_WITH_PLATFORM)
 
 .PHONY: all build test clean \
-        $(addprefix test_,bug1 bug2 bug3 bug4 bug5 bug6 bug7 bug8 bug9 bug10 bug11 bug12 bug13 bug14 bug15)
+        $(addprefix test_,bug1 bug2 bug3 bug4 bug5 bug6 bug7 bug8 bug9 bug10 bug11 bug12 bug13 bug14 bug15) \
+        test_gap3_estop test_gap3_iwdg test_gap3_temp test_gap3_idq test_gap3_order
 
 all: build test
 
@@ -129,6 +135,23 @@ test_bug12_pa_cal_loop_inverted: test_bug12_pa_cal_loop_inverted.c
 test_bug13_dac2_adc_buffer_mismatch: test_bug13_dac2_adc_buffer_mismatch.c
 	$(CC) $(CFLAGS) $< -lm -o $@
 
+# Gap-3 safety tests -- mock-only (needs spy log for GPIO sequence)
+test_gap3_emergency_stop_rails: test_gap3_emergency_stop_rails.c $(MOCK_OBJS)
+	$(CC) $(CFLAGS) $(INCLUDES) $< $(MOCK_OBJS) -o $@
+
+# Gap-3 safety tests -- standalone (pure logic)
+test_gap3_iwdg_config: test_gap3_iwdg_config.c
+	$(CC) $(CFLAGS) $< -lm -o $@
+
+test_gap3_temperature_max: test_gap3_temperature_max.c
+	$(CC) $(CFLAGS) $< -lm -o $@
+
+test_gap3_idq_periodic_reread: test_gap3_idq_periodic_reread.c
+	$(CC) $(CFLAGS) $< -lm -o $@
+
+test_gap3_emergency_state_ordering: test_gap3_emergency_state_ordering.c
+	$(CC) $(CFLAGS) $< -o $@
+
 # Tests that need platform_noos_stm32.o + mocks
 $(TESTS_WITH_PLATFORM): %: %.c $(MOCK_OBJS) $(PLATFORM_OBJ)
 	$(CC) $(CFLAGS) $(INCLUDES) $< $(MOCK_OBJS) $(PLATFORM_OBJ) -o $@
@@ -179,6 +202,21 @@ test_bug14: test_bug14_diag_section_args
 
 test_bug15: test_bug15_htim3_dangling_extern
 	./test_bug15_htim3_dangling_extern
+
+test_gap3_estop: test_gap3_emergency_stop_rails
+	./test_gap3_emergency_stop_rails
+
+test_gap3_iwdg: test_gap3_iwdg_config
+	./test_gap3_iwdg_config
+
+test_gap3_temp: test_gap3_temperature_max
+	./test_gap3_temperature_max
+
+test_gap3_idq: test_gap3_idq_periodic_reread
+	./test_gap3_idq_periodic_reread
+
+test_gap3_order: test_gap3_emergency_state_ordering
+	./test_gap3_emergency_state_ordering
 
 # --- Clean ---
 

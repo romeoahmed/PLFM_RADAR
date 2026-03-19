@@ -211,6 +211,11 @@ uint8_t adc1_readings[8] = {0};
 uint8_t adc2_readings[8] = {0};
 float Idq_reading[16]={0.0f};
 
+/* [GAP-3 FIX 2] Hardware IWDG watchdog handle
+ * Prescaler=256, Reload=500 → timeout ≈ 4.096 s from 32 kHz LSI.
+ * If the main loop stalls, the MCU resets automatically. */
+IWDG_HandleTypeDef hiwdg;
+
 
 // Global manager instance ADF4382A
 ADF4382A_Manager lo_manager;
@@ -270,6 +275,7 @@ static void MX_SPI1_Init(void);
 static void MX_SPI4_Init(void);
 static void MX_UART5_Init(void);
 static void MX_USART3_UART_Init(void);
+static void MX_IWDG_Init(void);  /* GAP-3 FIX 2: hardware watchdog */
 /* USER CODE BEGIN PFP */
 
 // Function prototypes
@@ -796,9 +802,34 @@ void Emergency_Stop(void) {
     DIAG_ERR("PA", "Clearing DAC2 outputs via CLR pin");
     DAC5578_ActivateClearPin(&hdac2);
 
-    DIAG_ERR("PA", "DACs cleared -- entering infinite hold loop (manual reset required)");
-    /* Keep outputs cleared until reset */
+    /* [GAP-3 FIX 1] Cut RF and PA power rails — DAC CLR alone is not enough.
+     * With gate voltage cleared but VDD still energized, PAs can self-bias
+     * or oscillate.  Disable everything in fast-to-slow order:
+     *   1. TX mixers (stop RF immediately)
+     *   2. PA 5V per-element supplies
+     *   3. PA 5.5V bulk supply
+     *   4. RFPA VDD enable
+     */
+    DIAG_ERR("PA", "Disabling TX mixers (GPIOD pin 11 LOW)");
+    HAL_GPIO_WritePin(GPIOD, GPIO_PIN_11, GPIO_PIN_RESET);
+
+    DIAG_ERR("PA", "Cutting PA 5V supplies (PA1/PA2/PA3 LOW)");
+    HAL_GPIO_WritePin(EN_P_5V0_PA1_GPIO_Port, EN_P_5V0_PA1_Pin, GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(EN_P_5V0_PA2_GPIO_Port, EN_P_5V0_PA2_Pin, GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(EN_P_5V0_PA3_GPIO_Port, EN_P_5V0_PA3_Pin, GPIO_PIN_RESET);
+
+    DIAG_ERR("PA", "Cutting PA 5.5V supply (EN_P_5V5_PA LOW)");
+    HAL_GPIO_WritePin(EN_P_5V5_PA_GPIO_Port, EN_P_5V5_PA_Pin, GPIO_PIN_RESET);
+
+    DIAG_ERR("PA", "Disabling RFPA VDD (EN_DIS_RFPA_VDD LOW)");
+    HAL_GPIO_WritePin(EN_DIS_RFPA_VDD_GPIO_Port, EN_DIS_RFPA_VDD_Pin, GPIO_PIN_RESET);
+
+    DIAG_ERR("PA", "All PA rails cut -- entering infinite hold loop (manual reset required)");
+    /* Keep outputs cleared until reset.
+     * MUST refresh IWDG here — otherwise the watchdog would reset the MCU,
+     * re-running startup code which re-energizes PA rails. */
     while (1) {
+        HAL_IWDG_Refresh(&hiwdg);
         HAL_Delay(100);
     }
 }
@@ -851,8 +882,11 @@ void handleSystemError(SystemError_t error) {
                  "CRITICAL ERROR! Initiating emergency shutdown.\r\n");
         HAL_UART_Transmit(&huart3, (uint8_t*)error_msg, strlen(error_msg), 1000);
 
-        Emergency_Stop();
+        /* [GAP-3 FIX 5] Set flag BEFORE Emergency_Stop() — the function
+         * never returns (infinite loop), so the line after it was dead code. */
         system_emergency_state = true;
+        Emergency_Stop();
+        /* NOTREACHED — Emergency_Stop() loops forever */
     }
 
     // For non-critical errors, attempt recovery
@@ -1331,6 +1365,7 @@ int main(void)
   MX_UART5_Init();
   MX_USART3_UART_Init();
   MX_USB_DEVICE_Init();
+  MX_IWDG_Init();  /* GAP-3 FIX 2: start hardware watchdog (~4 s timeout) */
   /* USER CODE BEGIN 2 */
 
   HAL_TIM_Base_Start(&htim1);
@@ -1345,7 +1380,12 @@ int main(void)
   //Wait for OCXO 3mn
   DIAG("CLK", "OCXO warmup starting -- waiting 180 s (3 min)");
   uint32_t ocxo_start = HAL_GetTick();
-  HAL_Delay(180000);
+  /* [GAP-3 FIX 2] Cannot use HAL_Delay(180000) — IWDG would reset MCU.
+   * Instead loop in 1-second steps, kicking the watchdog each iteration. */
+  for (int ocxo_sec = 0; ocxo_sec < 180; ocxo_sec++) {
+      HAL_IWDG_Refresh(&hiwdg);
+      HAL_Delay(1000);
+  }
   DIAG_ELAPSED("CLK", "OCXO warmup", ocxo_start);
 
   DIAG_SECTION("AD9523 POWER SEQUENCING");
@@ -2009,6 +2049,19 @@ int main(void)
 		       (double)Temperature_1, (double)Temperature_2, (double)Temperature_3, (double)Temperature_4,
 		       (double)Temperature_5, (double)Temperature_6, (double)Temperature_7, (double)Temperature_8);
 
+		  /* [GAP-3 FIX 3] Populate `temperature` with hottest sensor reading.
+		   * checkSystemHealth() uses `temperature` for the >75 °C overtemp check;
+		   * previously it was uninitialized. */
+		  {
+		      float temps[8] = { Temperature_1, Temperature_2, Temperature_3, Temperature_4,
+		                         Temperature_5, Temperature_6, Temperature_7, Temperature_8 };
+		      temperature = temps[0];
+		      for (int ti = 1; ti < 8; ti++) {
+		          if (temps[ti] > temperature) temperature = temps[ti];
+		      }
+		      DIAG("PA", "System temperature (max of 8 sensors) = %.1f C", (double)temperature);
+		  }
+
 		  //(20 mV/°C on TMP37) QPA2962 RF amplifier Operating Temp. Range, TBASE min−40 normal+25 max+85 °C
 		  int Max_Temp = 25;
 		  if((Temperature_1>Max_Temp)||(Temperature_2>Max_Temp)||(Temperature_3>Max_Temp)||(Temperature_4>Max_Temp)
@@ -2019,6 +2072,32 @@ int main(void)
 			}
 		  else{
 			  HAL_GPIO_WritePin(EN_DIS_COOLING_GPIO_Port, EN_DIS_COOLING_Pin, GPIO_PIN_RESET);
+		  }
+
+		  /* [GAP-3 FIX 4] Periodic IDQ re-read — the Idq_reading[] array was only
+		   * populated during startup/calibration.  checkSystemHealth() compares
+		   * stale values for overcurrent (>2.5 A) and bias fault (<0.1 A) checks.
+		   * Re-read all 16 channels every 5 s alongside temperature. */
+		  if (PowerAmplifier) {
+		      DIAG("PA", "Periodic IDQ re-read (ADC1 + ADC2, 16 channels)");
+		      for (uint8_t ch = 0; ch < 8; ch++) {
+		          adc1_readings[ch] = ADS7830_Measure_SingleEnded(&hadc1, ch);
+		          Idq_reading[ch] = (3.3f/255.0f) * adc1_readings[ch] / (50.0f * 0.005f);
+		      }
+		      for (uint8_t ch = 0; ch < 8; ch++) {
+		          adc2_readings[ch] = ADS7830_Measure_SingleEnded(&hadc2, ch);
+		          Idq_reading[ch + 8] = (3.3f/255.0f) * adc2_readings[ch] / (50.0f * 0.005f);
+		      }
+		      DIAG("PA", "IDQ[0..3]=%.3f %.3f %.3f %.3f  [4..7]=%.3f %.3f %.3f %.3f",
+		           (double)Idq_reading[0], (double)Idq_reading[1],
+		           (double)Idq_reading[2], (double)Idq_reading[3],
+		           (double)Idq_reading[4], (double)Idq_reading[5],
+		           (double)Idq_reading[6], (double)Idq_reading[7]);
+		      DIAG("PA", "IDQ[8..11]=%.3f %.3f %.3f %.3f  [12..15]=%.3f %.3f %.3f %.3f",
+		           (double)Idq_reading[8], (double)Idq_reading[9],
+		           (double)Idq_reading[10], (double)Idq_reading[11],
+		           (double)Idq_reading[12], (double)Idq_reading[13],
+		           (double)Idq_reading[14], (double)Idq_reading[15]);
 		  }
 
 
@@ -2034,6 +2113,10 @@ int main(void)
 	 //steering angle (rad)= arcsin(phase_dif/Pi)
 
       runRadarPulseSequence();
+
+      /* [GAP-3 FIX 2] Kick hardware watchdog — if we don't reach here within
+       * ~4 s, the IWDG resets the MCU automatically. */
+      HAL_IWDG_Refresh(&hiwdg);
 
       // Optional: Add system monitoring here
       // Check temperatures, power levels, etc.
@@ -2654,6 +2737,30 @@ static void MX_GPIO_Init(void)
 /* ============================================================
  *                  DEVICE INITIALIZATION
  * ============================================================ */
+
+/**
+ * [GAP-3 FIX 2] Initialize Independent Watchdog (IWDG).
+ *
+ * LSI clock ≈ 32 kHz.
+ * Prescaler = 256  → IWDG counter clock ≈ 125 Hz (8 ms/tick).
+ * Reload   = 500   → timeout ≈ 500 × 8 ms = 4.0 s.
+ *
+ * The main loop must call HAL_IWDG_Refresh() within this window
+ * or the MCU hard-resets — protecting against firmware hangs when
+ * PA rails may be energized.
+ */
+static void MX_IWDG_Init(void)
+{
+    hiwdg.Instance       = IWDG;
+    hiwdg.Init.Prescaler = IWDG_PRESCALER_256;
+    hiwdg.Init.Reload    = 500;
+    hiwdg.Init.Window    = IWDG_WINDOW_DISABLE;
+    if (HAL_IWDG_Init(&hiwdg) != HAL_OK) {
+        DIAG_ERR("SYS", "IWDG init FAILED -- continuing without hardware watchdog");
+    } else {
+        DIAG("SYS", "IWDG hardware watchdog started (timeout ~4s)");
+    }
+}
 
 
 

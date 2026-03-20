@@ -18,8 +18,11 @@
  *     process each Doppler column independently:
  *     a) Read 64 magnitudes from BRAM for one Doppler bin (ST_COL_LOAD)
  *     b) Compute initial sliding window sums (ST_CFAR_INIT)
- *     c) Slide CUT through all 64 range bins (ST_CFAR_PROC)
- *        - 2 sub-cycles per CUT: THRESHOLD compute, then COMPARE + window update
+ *     c) Slide CUT through all 64 range bins:
+ *        - 3 sub-cycles per CUT:
+ *          ST_CFAR_THR: register noise_sum (mode select + cross-multiply)
+ *          ST_CFAR_MUL: compute alpha * noise_sum_reg in DSP
+ *          ST_CFAR_CMP: compare CUT magnitude against threshold + update window
  *     d) Advance to next Doppler column (ST_COL_NEXT)
  *
  * CFAR Modes (cfg_cfar_mode):
@@ -44,8 +47,9 @@
  *   typically clutter).
  *
  * Timing:
- *   Phase 2 takes ~(66 + T + 2*64) * 32 ≈ 7000 cycles per frame @ 100 MHz
- *   = 70 µs. Frame period @ PRF=1932 Hz, 32 chirps = 16.6 ms. Fits easily.
+ *   Phase 2 takes ~(66 + T + 3*64) * 32 ≈ 8500 cycles per frame @ 100 MHz
+ *   = 85 µs. Frame period @ PRF=1932 Hz, 32 chirps = 16.6 ms. Fits easily.
+ *   (3 cycles per CUT due to pipeline: THR → MUL → CMP)
  *
  * Resources:
  *   - 1 BRAM18K for magnitude buffer (2048 x 17 bits)
@@ -113,7 +117,8 @@ localparam [3:0] ST_IDLE       = 4'd0,
                  ST_BUFFER     = 4'd1,
                  ST_COL_LOAD   = 4'd2,
                  ST_CFAR_INIT  = 4'd3,
-                 ST_CFAR_THR   = 4'd4,  // Compute threshold
+                 ST_CFAR_THR   = 4'd4,  // Register noise_sum (mode select + cross-multiply)
+                 ST_CFAR_MUL   = 4'd8,  // Compute alpha * noise_sum_reg in DSP
                  ST_CFAR_CMP   = 4'd5,  // Compare + update window
                  ST_COL_NEXT   = 4'd6,
                  ST_DONE       = 4'd7;
@@ -171,8 +176,9 @@ reg [1:0]  r_mode;
 reg        r_enable;
 reg [15:0] r_simple_thr;
 
-// Threshold pipeline register
-reg [PROD_WIDTH-1:0] noise_product;
+// Threshold pipeline registers
+reg [SUM_WIDTH-1:0]  noise_sum_reg;   // Stage 1: registered noise_sum_comb output
+reg [PROD_WIDTH-1:0] noise_product;   // Stage 2: alpha * noise_sum_reg
 reg [MAG_WIDTH-1:0]  adaptive_thr;
 
 // Init counter for computing initial lagging sum
@@ -279,6 +285,7 @@ always @(posedge clk or negedge reset_n) begin
         leading_count  <= 0;
         lagging_count  <= 0;
         init_idx       <= 0;
+        noise_sum_reg  <= 0;
         noise_product  <= 0;
         adaptive_thr   <= 0;
         r_guard        <= 4'd2;
@@ -422,13 +429,30 @@ always @(posedge clk or negedge reset_n) begin
         end
 
         // ================================================================
-        // ST_CFAR_THR: Compute adaptive threshold for current CUT
+        // ST_CFAR_THR: Register noise estimate (mode select + cross-multiply)
         // ================================================================
-        // Register the alpha * noise product. Result used next cycle.
+        // Pipeline stage 1: register the combinational noise_sum_comb
+        // output. This breaks the critical path:
+        //   leading_sum → cross-multiply (GO/SO) → mux → alpha*noise DSP
+        // into two shorter paths:
+        //   Cycle 1: leading_sum → cross-multiply → mux → noise_sum_reg
+        //   Cycle 2: noise_sum_reg → alpha * noise_sum_reg → noise_product
         ST_CFAR_THR: begin
             cfar_status <= {4'd4, 1'b0, col_idx[2:0]};
 
-            noise_product <= r_alpha * noise_sum_comb;
+            noise_sum_reg <= noise_sum_comb;
+            state <= ST_CFAR_MUL;
+        end
+
+        // ================================================================
+        // ST_CFAR_MUL: Compute alpha * noise_sum_reg in DSP
+        // ================================================================
+        // Pipeline stage 2: multiply registered noise sum by alpha.
+        // This is a clean registered-input → DSP path.
+        ST_CFAR_MUL: begin
+            cfar_status <= {4'd4, 1'b1, col_idx[2:0]};
+
+            noise_product <= r_alpha * noise_sum_reg;
             state <= ST_CFAR_CMP;
         end
 

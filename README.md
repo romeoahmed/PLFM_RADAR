@@ -3,6 +3,7 @@
 [![Hardware: CERN-OHL-P](https://img.shields.io/badge/Hardware-CERN--OHL--P-blue.svg)](https://ohwr.org/cern_ohl_p_v2.txt)
 [![Software: MIT](https://img.shields.io/badge/Software-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Status: Alpha](https://img.shields.io/badge/Status-Alpha-orange)](https://github.com/NawfalMotii79/PLFM_RADAR)
+[![Features: Work in Progress](https://img.shields.io/badge/Features-Work_in_Progress-yellow)](https://github.com/NawfalMotii79/PLFM_RADAR/issues)
 [![Frequency: 10.5GHz](https://img.shields.io/badge/Frequency-10.5GHz-blue)](https://github.com/NawfalMotii79/PLFM_RADAR)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/NawfalMotii79/PLFM_RADAR/pulls)
 
@@ -17,8 +18,6 @@ AERIS-10 is an open-source, low-cost 10.5 GHz phased array radar system featurin
 The AERIS-10 project aims to democratize radar technology by providing a fully open-source, modular, and hackable radar system. Whether you're a university researcher, a drone startup, or an advanced maker, AERIS-10 offers a platform for experimenting with beamforming, pulse compression, Doppler processing, and target tracking.
 
 ## 🔬 Key Features
-
-> **Alpha Project.** Core hardware (schematics, PCB, FPGA pipeline) works and is in active use. GPS/map integration, full attitude correction, and beam steering UI are not yet complete or validated on hardware. See [issues](https://github.com/NawfalMotii79/PLFM_RADAR/issues) for current status.
 
 - **Open Source Hardware & Software** - Complete schematics, PCB layouts, firmware, and software available
 - **Dual Version Availability**:

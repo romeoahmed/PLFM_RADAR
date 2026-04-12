@@ -82,3 +82,33 @@ jobs:
       - name: Run full FPGA regression
         run: bash run_regression.sh
         working-directory: 9_Firmware/9_2_FPGA
+
+  # ===========================================================================
+  # Cross-Layer Contract Tests (Python ↔ Verilog ↔ C)
+  # Validates opcode maps, bit widths, packet layouts, and round-trip
+  # correctness across FPGA RTL, Python GUI, and STM32 firmware.
+  # ===========================================================================
+  cross-layer-tests:
+    name: Cross-Layer Contract Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: astral-sh/setup-uv@v5
+
+      - name: Install dependencies
+        run: uv sync --group dev
+
+      - name: Install Icarus Verilog
+        run: sudo apt-get update && sudo apt-get install -y iverilog
+
+      - name: Run cross-layer contract tests
+        run: >
+          uv run pytest
+          9_Firmware/tests/cross_layer/test_cross_layer_contract.py
+          -v --tb=short
